@@ -15,8 +15,10 @@ class Settings(BaseSettings):
     # OpenAI Settings
     OPENAI_API_KEY: str
     
-    # Database
+    # Database (Supabase)
     DATABASE_URL: str = "postgresql://user:password@localhost:5432/meetinggpt"
+    SUPABASE_URL: str
+    SUPABASE_SERVICE_KEY: str
     
     # Redis
     REDIS_URL: str = "redis://localhost:6379"
@@ -26,6 +28,11 @@ class Settings(BaseSettings):
     STRIPE_SECRET_KEY: str
     STRIPE_PRICE_ID: str
     FRONTEND_URL: str = "http://localhost:3000"
+    
+    # GitHub Auth
+    GITHUB_CLIENT_ID: str
+    GITHUB_CLIENT_SECRET: str
+    JWT_SECRET: str
     
     # Performance
     MAX_CONCURRENT_REQUESTS: int = 100
