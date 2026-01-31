@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { ArrowRight, CheckCircle2, Zap, Shield, BarChart3, Globe, Play, Video, Brain, MessageSquare, Target, Clock, Users, FileText, Mic, MicOff } from 'lucide-react';
+import { mockTranscribeAudio, type TranscriptionResult } from './mock-transcribe';
 
 interface Transcript {
   id: string;
@@ -41,20 +42,95 @@ export default function Home() {
     { id: '3', text: 'Create implementation timeline', assignee: 'Sarah', priority: 'high', dueDate: '2024-02-08' }
   ];
 
+  const [isTranscribing, setIsTranscribing] = useState(false);
+  const [transcriptionResult, setTranscriptionResult] = useState<TranscriptionResult | null>(null);
+
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    setIsTranscribing(true);
+    setTranscriptionResult(null);
+
+    try {
+      const result = await mockTranscribeAudio(file);
+      setTranscriptionResult(result);
+      
+      // Convert transcription result to transcript format
+      const lines = result.text.split('\n').filter(line => line.trim());
+      const newTranscript: Transcript[] = lines.map((line, index) => ({
+        id: `transcript_${index}`,
+        speaker: result.speakers?.[0]?.name || 'Speaker',
+        text: line.trim(),
+        timestamp: new Date(Date.now() + index * 1000)
+      }));
+      
+      setTranscript(newTranscript);
+      
+      // Generate action items from transcription
+      const actionItems = extractActionItems(result.text);
+      setActionItems(actionItems);
+      
+      // Generate summary
+      setSummary(generateSummary(result.text));
+      
+    } catch (error) {
+      console.error('Transcription failed:', error);
+    } finally {
+      setIsTranscribing(false);
+    }
+  };
+
+  const extractActionItems = (text: string): ActionItem[] => {
+    const actionRegex = /(\d+\.\s*)(.+?)(?:\s*-\s*(.+?))?(?:\s*by\s*(.+?))?(?:\s*due\s*(.+?))?$/gim;
+    const items: ActionItem[] = [];
+    let match;
+
+    while ((match = actionRegex.exec(text)) !== null) {
+      items.push({
+        id: `action_${items.length + 1}`,
+        text: match[2]?.trim() || 'Action item',
+        assignee: match[4]?.trim() || 'Unassigned',
+        priority: Math.random() > 0.7 ? 'high' : Math.random() > 0.4 ? 'medium' : 'low',
+        dueDate: match[5]?.trim() || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+      });
+    }
+
+    // If no action items found, create some defaults
+    if (items.length === 0) {
+      items.push(
+        {
+          id: 'action_1',
+          text: 'Review meeting notes and follow up on discussed topics',
+          assignee: 'Team Lead',
+          priority: 'high',
+          dueDate: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+        },
+        {
+          id: 'action_2',
+          text: 'Schedule follow-up meeting to review progress',
+          assignee: 'Coordinator',
+          priority: 'medium',
+          dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+        }
+      );
+    }
+
+    return items;
+  };
+
+  const generateSummary = (text: string): string => {
+    const sentences = text.split('.').filter(s => s.trim().length > 0);
+    if (sentences.length === 0) return 'Meeting transcription completed.';
+    
+    return `Meeting covered key topics including ${sentences.slice(0, 3).join('. ').toLowerCase()}. Key discussions focused on important action items and next steps for the team.`;
+  };
+
   const startRecording = () => {
     setIsRecording(true);
-    setTranscript([]);
-    setActionItems([]);
-    setSummary('');
-    
-    // Simulate real-time transcription
-    setTimeout(() => {
-      setTranscript(sampleTranscript);
-      setTimeout(() => {
-        setActionItems(sampleActionItems);
-        setSummary('The team discussed improving user onboarding based on Q4 feedback. Key focus areas include simplifying registration and addressing pain points in the current flow. Action items were assigned to redesign the onboarding experience.');
-      }, 2000);
-    }, 3000);
+    setTranscript(sampleTranscript);
+    setActionItems(sampleActionItems);
+    setSummary('The team discussed improving user onboarding based on Q4 feedback. Key focus areas include simplifying registration and addressing pain points in the current flow. Action items were assigned to redesign the onboarding experience.');
   };
 
   const stopRecording = () => {
